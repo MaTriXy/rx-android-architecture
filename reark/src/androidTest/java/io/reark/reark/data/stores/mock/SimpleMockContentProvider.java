@@ -23,7 +23,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.reark.reark.data.stores;
+package io.reark.reark.data.stores.mock;
 
 import android.content.ContentValues;
 import android.database.Cursor;
@@ -52,7 +52,8 @@ public class SimpleMockContentProvider extends MockContentProvider {
 
     @Override
     public int update(Uri uri, ContentValues contentValues, String selection, String[] selectionArgs) {
-        return 0;
+        insert(uri, contentValues);
+        return 1;
     }
 
     @Override
@@ -66,6 +67,11 @@ public class SimpleMockContentProvider extends MockContentProvider {
         return getCursor(uri, projection);
     }
 
+    @Override
+    public int delete(Uri uri, String selection, String[] selectionArgs) {
+        return values.remove(uri) == null ? 0 : 1;
+    }
+
     @Nullable
     @Override
     public Cursor query(@NonNull final Uri uri, String[] projection, String selection, String[] selectionArgs,
@@ -74,7 +80,7 @@ public class SimpleMockContentProvider extends MockContentProvider {
     }
 
     // Crude imitation of the behavior of SQL content provider
-    private Cursor getCursor(Uri uri, String[] projection) {
+    private Cursor getCursor(Uri uri, String... projection) {
         MatrixCursor cursor = new MatrixCursor(projection);
 
         if (values.containsKey(uri)) {

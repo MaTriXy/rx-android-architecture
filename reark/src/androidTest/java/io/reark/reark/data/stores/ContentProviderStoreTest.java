@@ -25,191 +25,135 @@
  */
 package io.reark.reark.data.stores;
 
-import android.content.ContentResolver;
-import android.content.ContentValues;
-import android.database.Cursor;
-import android.net.Uri;
-import android.support.annotation.NonNull;
+import android.support.test.runner.AndroidJUnit4;
 import android.test.ProviderTestCase2;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 import java.util.concurrent.TimeUnit;
 
-import io.reark.reark.data.stores.SimpleMockContentProvider.DataColumns;
-import rx.functions.Action1;
-import rx.observers.TestSubscriber;
+import io.reactivex.functions.Consumer;
+import io.reark.reark.data.stores.mock.SimpleMockContentProvider;
+import io.reark.reark.data.stores.mock.SimpleMockStore;
+import io.reark.reark.data.stores.mock.SimpleMockStoreCore;
 
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+
+@RunWith(AndroidJUnit4.class)
 public class ContentProviderStoreTest extends ProviderTestCase2<SimpleMockContentProvider> {
 
-    private static final String AUTHORITY = "test.authority";
-    private static final Uri AUTHORITY_URI = Uri.parse("content://" + AUTHORITY);
-    private static final Uri CONTENT_URI = Uri.withAppendedPath(AUTHORITY_URI, "veggies");
-    private static final String[] PROJECTION = { DataColumns.KEY, DataColumns.VALUE };
-
-    private TestStore store;
+    private SimpleMockStore store;
+    private SimpleMockStoreCore core;
 
     public ContentProviderStoreTest() {
-        super(SimpleMockContentProvider.class, AUTHORITY);
+        super(SimpleMockContentProvider.class, SimpleMockStoreCore.AUTHORITY);
     }
 
+    @Before
     @Override
-    protected void setUp() throws Exception {
+    public void setUp() throws Exception {
         super.setUp();
-
-        store = new TestStore(getMockContentResolver());
-
-        Action1<String> insert = value ->
-                getProvider().insert(
-                        store.getUriForId(store.getIdFor(value)),
-                        store.getContentValuesForItem(value)
-                );
-
-        // Prepare the mock content provider with values
-        insert.call("parsnip");
-        insert.call("lettuce");
-        insert.call("spinach");
     }
 
-    public void testGetOneWithData() {
-        // ARRANGE
-        TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        List<String> expected = Collections.singletonList("parsnip");
+    @Test
+    public void getOnce_WithId_WithData_ReturnsData_AndCompletes() {
+        new ArrangeBuilder().withTestData();
 
-        // ACT
-        store.getOnce(store.getIdFor("parsnip")).subscribe(testSubscriber);
-
-        // ASSERT
-        testSubscriber.awaitTerminalEvent();
-        testSubscriber.assertCompleted();
-        testSubscriber.assertNoErrors();
-        testSubscriber.assertReceivedOnNext(expected);
+        store.getOnce(SimpleMockStore.getIdFor("parsnip"))
+                .test()
+                .awaitDone(50, TimeUnit.MILLISECONDS)
+                .assertComplete()
+                .assertNoErrors()
+                .assertValue("parsnip");
     }
 
-    public void testGetOneWithoutData() {
-        // ARRANGE
-        TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        List<String> expected = Collections.singletonList(null);
+    @Test
+    public void getOnce_WithNoId_WithData_ReturnsAllValues_AndCompletes() {
+        new ArrangeBuilder().withTestData();
 
-        // ACT
-        store.getOnce(store.getIdFor("bacon")).subscribe(testSubscriber);
-
-        // ASSERT
-        testSubscriber.awaitTerminalEvent();
-        testSubscriber.assertCompleted();
-        testSubscriber.assertNoErrors();
-        testSubscriber.assertReceivedOnNext(expected);
+        store.getOnce()
+                .test()
+                .awaitDone(50, TimeUnit.MILLISECONDS)
+                .assertComplete()
+                .assertNoErrors()
+                .assertValue(asList("parsnip", "lettuce", "spinach"));
     }
 
-    public void testGetWithData() {
-        // ARRANGE
-        TestSubscriber<List<String>> testSubscriber = new TestSubscriber<>();
-        List<List<String>> expected = Collections.singletonList(Collections.singletonList("parsnip"));
+    @Test
+    public void getOnce_WithId_WithNoData_ReturnsNoneValue_AndCompletes() {
+        new ArrangeBuilder();
 
-        // ACT
-        store.get(store.getIdFor("parsnip")).subscribe(testSubscriber);
-
-        // ASSERT
-        testSubscriber.awaitTerminalEvent();
-        testSubscriber.assertCompleted();
-        testSubscriber.assertNoErrors();
-        testSubscriber.assertReceivedOnNext(expected);
+        store.getOnce(SimpleMockStore.getIdFor("bacon"))
+                .test()
+                .awaitDone(50, TimeUnit.MILLISECONDS)
+                .assertComplete()
+                .assertNoErrors()
+                .assertValue(SimpleMockStore.NONE);
     }
 
-    public void testGetAll() {
-        // ARRANGE
-        TestSubscriber<List<String>> testSubscriber = new TestSubscriber<>();
-        List<List<String>> expected = Collections.singletonList(Arrays.asList("parsnip", "lettuce", "spinach"));
+    @Test
+    public void getOnce_WithNoId_WithNoData_ReturnsEmptyList_AndCompletes() {
+        new ArrangeBuilder();
 
-        // ACT
-        // Wildcard depends on content provider. For tests we just use 0 while on SQL backend
-        // this would be an asterisk. The exact wildcard is not important for the test as we just
-        // want to make sure the provider stores can return a larger listing of results.
-        store.get(0).subscribe(testSubscriber);
-
-        // ASSERT
-        testSubscriber.awaitTerminalEvent();
-        testSubscriber.assertCompleted();
-        testSubscriber.assertNoErrors();
-        testSubscriber.assertReceivedOnNext(expected);
+        store.getOnce()
+                .test()
+                .awaitDone(50, TimeUnit.MILLISECONDS)
+                .assertComplete()
+                .assertNoErrors()
+                .assertValue(emptyList());
     }
 
-    public void testGetOnceAndStream() {
-        // ARRANGE
-        TestSubscriber<String> testSubscriber = new TestSubscriber<>();
-        List<String> expected = Collections.singletonList("spinach");
+    @Test
+    public void getOnceAndStream_WithId_WithData_ReturnsData_AndDoesNotComplete() {
+        new ArrangeBuilder().withTestData();
 
-        // ACT
-        store.getOnceAndStream(store.getIdFor("spinach")).subscribe(testSubscriber);
-
-        // ASSERT
-        testSubscriber.awaitTerminalEvent(50, TimeUnit.MILLISECONDS);
-        testSubscriber.assertNotCompleted();
-        testSubscriber.assertNoErrors();
-        testSubscriber.assertReceivedOnNext(expected);
+        store.getOnceAndStream(SimpleMockStore.getIdFor("spinach"))
+                .test()
+                .awaitDone(50, TimeUnit.MILLISECONDS)
+                .assertNotComplete()
+                .assertNoErrors()
+                .assertValue("spinach");
     }
 
-    public void testGetEmptyStream() {
-        // ARRANGE
-        TestSubscriber<String> testSubscriber = new TestSubscriber<>();
+    @Test
+    public void getOnceAndStream_WithId_WithNoData_ReturnsNoneValue_AndDoesNotComplete() {
+        new ArrangeBuilder().withTestData();
 
-        // ACT
-        store.getOnceAndStream(store.getIdFor("bacon")).subscribe(testSubscriber);
-
-        // ASSERT
-        testSubscriber.awaitTerminalEvent(50, TimeUnit.MILLISECONDS);
-        testSubscriber.assertNotCompleted();
-        testSubscriber.assertNoErrors();
-        testSubscriber.assertNoValues();
+        store.getOnceAndStream(SimpleMockStore.getIdFor("bacon"))
+                .test()
+                .awaitDone(50, TimeUnit.MILLISECONDS)
+                .assertNotComplete()
+                .assertNoErrors()
+                .assertValue(SimpleMockStore.NONE);
     }
 
-    /**
-     * A simple store containing String values tracked with Integer keys.
-     */
-    public static class TestStore extends ContentProviderStore<String, Integer> {
+    private class ArrangeBuilder {
 
-        public TestStore(@NonNull final ContentResolver contentResolver) {
-            super(contentResolver);
+        ArrangeBuilder() {
+            core = new SimpleMockStoreCore(getMockContentResolver());
+            store = new SimpleMockStore(core);
         }
 
-        @NonNull
-        @Override
-        public Uri getUriForId(@NonNull final Integer id) {
-            return Uri.withAppendedPath(getContentUri(), String.valueOf(id));
-        }
+        ArrangeBuilder withTestData() {
+            Consumer<String> insert = value ->
+                    getProvider().insert(
+                            core.getUriForId(SimpleMockStore.getIdFor(value)),
+                            core.getContentValuesForItem(value)
+                    );
 
-        @NonNull
-        @Override
-        protected Integer getIdFor(@NonNull final String item) {
-            return item.hashCode();
-        }
+            // Prepare the mock content provider with values
+            try {
+                insert.accept("parsnip");
+                insert.accept("lettuce");
+                insert.accept("spinach");
+            } catch (Exception ignored) {
+            }
 
-        @NonNull
-        @Override
-        public Uri getContentUri() {
-            return CONTENT_URI;
-        }
-
-        @NonNull
-        @Override
-        protected String[] getProjection() {
-            return PROJECTION;
-        }
-
-        @NonNull
-        @Override
-        protected String read(@NonNull final Cursor cursor) {
-            return cursor.getString(cursor.getColumnIndex(DataColumns.VALUE));
-        }
-
-        @NonNull
-        @Override
-        protected ContentValues getContentValuesForItem(@NonNull final String item) {
-            ContentValues contentValues = new ContentValues();
-            contentValues.put(DataColumns.KEY, getIdFor(item));
-            contentValues.put(DataColumns.VALUE, item);
-            return contentValues;
+            return this;
         }
     }
+
 }

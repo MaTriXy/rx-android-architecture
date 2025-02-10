@@ -33,17 +33,29 @@ import android.support.annotation.NonNull;
 
 import com.google.gson.Gson;
 
+import io.reark.reark.data.stores.cores.ContentProviderStoreCore;
+import io.reark.reark.utils.Preconditions;
+import io.reark.rxgithubapp.advanced.data.schematicProvider.GitHubProvider;
 import io.reark.rxgithubapp.advanced.data.schematicProvider.GitHubProvider.GitHubRepositories;
 import io.reark.rxgithubapp.advanced.data.schematicProvider.JsonIdColumns;
-import io.reark.rxgithubapp.advanced.data.schematicProvider.UserSettingsColumns;
 import io.reark.rxgithubapp.shared.pojo.GitHubRepository;
 
 import static io.reark.reark.utils.Preconditions.checkNotNull;
 
-public class GitHubRepositoryStoreCore extends GsonStoreCoreBase<Integer, GitHubRepository> {
+public class GitHubRepositoryStoreCore extends ContentProviderStoreCore<Integer, GitHubRepository> {
+
+    private final Gson gson;
 
     public GitHubRepositoryStoreCore(@NonNull final ContentResolver contentResolver, @NonNull final Gson gson) {
-        super(contentResolver, gson);
+        super(contentResolver);
+
+        this.gson = Preconditions.get(gson);
+    }
+
+    @NonNull
+    @Override
+    protected String getAuthority() {
+        return GitHubProvider.AUTHORITY;
     }
 
     @NonNull
@@ -55,7 +67,7 @@ public class GitHubRepositoryStoreCore extends GsonStoreCoreBase<Integer, GitHub
     @NonNull
     @Override
     protected String[] getProjection() {
-        return new String[] { UserSettingsColumns.ID, UserSettingsColumns.JSON };
+        return new String[] { JsonIdColumns.ID, JsonIdColumns.JSON };
     }
 
     @NonNull
@@ -65,7 +77,7 @@ public class GitHubRepositoryStoreCore extends GsonStoreCoreBase<Integer, GitHub
 
         ContentValues contentValues = new ContentValues();
         contentValues.put(JsonIdColumns.ID, item.getId());
-        contentValues.put(JsonIdColumns.JSON, getGson().toJson(item));
+        contentValues.put(JsonIdColumns.JSON, gson.toJson(item));
         return contentValues;
     }
 
@@ -75,7 +87,7 @@ public class GitHubRepositoryStoreCore extends GsonStoreCoreBase<Integer, GitHub
         checkNotNull(cursor);
 
         final String json = cursor.getString(cursor.getColumnIndex(JsonIdColumns.JSON));
-        return getGson().fromJson(json, GitHubRepository.class);
+        return gson.fromJson(json, GitHubRepository.class);
     }
 
     @NonNull

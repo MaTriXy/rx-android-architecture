@@ -30,11 +30,16 @@ import android.database.ContentObserver;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 
+import java.util.List;
+
+import io.reactivex.Maybe;
+import io.reactivex.Observable;
+import io.reactivex.Single;
+import io.reactivex.subjects.PublishSubject;
 import io.reark.reark.data.stores.StoreItem;
+import io.reark.reark.data.stores.interfaces.StoreCoreInterface;
 import io.reark.reark.utils.Log;
 import io.reark.reark.utils.Preconditions;
-import rx.Observable;
-import rx.subjects.PublishSubject;
 
 import static io.reark.reark.utils.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -50,8 +55,9 @@ import static java.lang.String.format;
  * @param <T> Type of the id used in this store core.
  * @param <U> Type of the data this store core contains.
  */
-public abstract class ContentProviderStoreCore<T, U> extends ContentProviderStoreCoreBase<U>
-        implements StoreCoreInterface<T, U> {
+public abstract class ContentProviderStoreCore<T, U>
+        extends ContentProviderStoreCoreBase<U> implements StoreCoreInterface<T, U> {
+
     private static final String TAG = ContentProviderStoreCore.class.getSimpleName();
 
     @NonNull
@@ -59,6 +65,12 @@ public abstract class ContentProviderStoreCore<T, U> extends ContentProviderStor
 
     protected ContentProviderStoreCore(@NonNull final ContentResolver contentResolver) {
         super(contentResolver);
+    }
+
+    protected ContentProviderStoreCore(@NonNull final ContentResolver contentResolver,
+                                       final int groupingTimeout,
+                                       final int groupMaxSize) {
+        super(contentResolver, groupingTimeout, groupMaxSize);
     }
 
     @NonNull
@@ -69,8 +81,8 @@ public abstract class ContentProviderStoreCore<T, U> extends ContentProviderStor
             public void onChange(boolean selfChange, Uri uri) {
                 super.onChange(selfChange, uri);
 
-                getOne(uri)
-                        .doOnNext(item -> Log.v(TAG, format("onChange(%1s)", uri)))
+                getOnce(uri)
+                        .doOnSuccess(item -> Log.v(TAG, format("onChange(%1s)", uri)))
                         .map(item -> new StoreItem<>(getIdForUri(uri), item))
                         .subscribe(subjectCache::onNext,
                                    error -> Log.e(TAG, "Cannot retrieve the item: " + uri, error));
@@ -78,40 +90,34 @@ public abstract class ContentProviderStoreCore<T, U> extends ContentProviderStor
         };
     }
 
-    /**
-     * Inserts the given item to the store, or updates the store if an item with the same id
-     * already exists.
-     *
-     * Any open stream Observables for the item's id will emit this new value.
-     */
-    @Override
-    public void put(@NonNull final T id, @NonNull final U item) {
-        checkNotNull(id);
-
-        put(Preconditions.get(item), getUriForId(id));
-    }
-
-    /**
-     * Returns a completing Observable that either emits the first existing item in the store
-     * matching the id, or emits null if the store does not contain the requested id.
-     */
     @NonNull
     @Override
-    public Observable<U> getCached(@NonNull final T id) {
+    public Single<Boolean> put(@NonNull final T id, @NonNull final U item) {
         checkNotNull(id);
 
-        final Uri uri = getUriForId(id);
-        return getOne(uri);
+        return put(getUriForId(id), Preconditions.get(item));
     }
 
-    /**
-     * Returns a non-completing Observable of all new and updated items.
-     */
     @NonNull
-    public Observable<StoreItem<T, U>> getStream() {
-        Log.v(TAG, "getStream()");
+    @Override
+    public Single<Boolean> delete(@NonNull final T id) {
+        checkNotNull(id);
 
-        return subjectCache.asObservable();
+        return delete(getUriForId(id));
+    }
+
+    @NonNull
+    @Override
+    public Maybe<U> getCached(@NonNull final T id) {
+        checkNotNull(id);
+
+        return getOnce(getUriForId(id));
+    }
+
+    @NonNull
+    @Override
+    public Single<List<U>> getCached() {
+        return getAllOnce(getContentUri());
     }
 
     @NonNull
@@ -119,21 +125,30 @@ public abstract class ContentProviderStoreCore<T, U> extends ContentProviderStor
     public Observable<U> getStream(@NonNull final T id) {
         checkNotNull(id);
 
-        return subjectCache
-                .filter(item -> item.id().equals(id))
-                .doOnNext(item -> Log.v(TAG, "getItemObservable(" + item + ')'))
-                .map(StoreItem::item)
-                .asObservable();
+        return subjectCache.filter(item -> item.id().equals(id))
+                .map(StoreItem::item);
+    }
+
+    @NonNull
+    @Override
+    public Observable<U> getStream() {
+        return subjectCache.map(StoreItem::item);
     }
 
     /**
      * Returns unique Uri for the given id in the content provider of this store.
+     *
+     * @param id Store item id for which the Uri should be resolved.
+     * @return Resolved content provider Uri.
      */
     @NonNull
     protected abstract Uri getUriForId(@NonNull final T id);
 
     /**
      * Returns id for the unique Uri in the content provider of this store.
+     *
+     * @param uri Content provider Uri for which the id should be resolved.
+     * @return Resolved store item id.
      */
     @NonNull
     protected abstract T getIdForUri(@NonNull final Uri uri);

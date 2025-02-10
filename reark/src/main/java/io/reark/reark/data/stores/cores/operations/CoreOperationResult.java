@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 2013-2016 reark project contributors
+ * Copyright (c) 2013-2017 reark project contributors
  *
  * https://github.com/reark/reark/graphs/contributors
  *
@@ -23,16 +23,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.reark.reark.data.stores;
+package io.reark.reark.data.stores.cores.operations;
 
-/**
- * A combined default interface for a store. A store acts as a data container, in which all data
- * items are identified with an id that can be deduced from the item itself. Usually this would be
- * done through a function such as U getId(T item), but it can be defined in the store
- * implementation itself.
- *
- * @param <T> Type of the id used in this store.
- * @param <U> Type of the data this store contains.
- */
-public interface StoreInterface<T, U> extends StorePutInterface<U>, StoreGetInterface<T, U> {
+import android.content.ContentProviderResult;
+import android.net.Uri;
+import android.support.annotation.NonNull;
+
+import io.reactivex.subjects.Subject;
+
+public final class CoreOperationResult {
+
+    @NonNull
+    private final Uri uri;
+
+    @NonNull
+    private final Subject<Boolean> completionNotifier;
+
+    private final boolean success;
+
+    public CoreOperationResult(@NonNull CoreOperation operation, boolean success) {
+        this.uri = operation.uri();
+        this.completionNotifier = operation.completionNotifier();
+        this.success = success;
+    }
+
+    public CoreOperationResult(@NonNull ContentProviderResult result, @NonNull CoreOperation operation) {
+        this.uri = operation.uri();
+        this.completionNotifier = operation.completionNotifier();
+        this.success = result.count == null || result.count > 0;
+    }
+
+    @NonNull
+    public Uri uri() {
+        return uri;
+    }
+
+    public void notifyCompletion() {
+        completionNotifier.onNext(success);
+    }
 }

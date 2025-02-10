@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 2013-2016 reark project contributors
+ * Copyright (c) 2013-2017 reark project contributors
  *
  * https://github.com/reark/reark/graphs/contributors
  *
@@ -23,29 +23,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.reark.rxgithubapp.advanced.data.stores;
+package io.reark.rxgithubapp.shared;
 
-import android.content.ContentResolver;
-import android.support.annotation.NonNull;
+@SuppressWarnings({"ConstantConditions", "MarkerInterface", "InnerClassOfInterface"})
+public interface Constants {
 
-import com.google.gson.Gson;
+    interface Tests {
 
-import io.reark.reark.data.stores.ContentProviderStore;
-import io.reark.reark.utils.Preconditions;
+        int PROVIDER_WAIT_TIME = BuildConfig.IS_CI_BUILD ? 2000 : 200;
 
-public abstract class GsonStoreBase<T, U> extends ContentProviderStore<T, U> {
-
-    @NonNull
-    private final Gson gson;
-
-    protected GsonStoreBase(@NonNull final ContentResolver contentResolver, @NonNull final Gson gson) {
-        super(contentResolver);
-
-        this.gson = Preconditions.get(gson);
     }
 
-    @NonNull
-    protected Gson getGson() {
-        return gson;
-    }
 }

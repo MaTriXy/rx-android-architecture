@@ -25,30 +25,16 @@
  */
 package io.reark.rxgithubapp.shared.utils;
 
-import com.squareup.okhttp.OkHttpClient;
+import android.support.annotation.NonNull;
 
-import org.junit.Before;
-import org.junit.Test;
+public class NullApplicationInstrumentation implements ApplicationInstrumentation {
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyZeroInteractions;
+    @Override
+    public void init() { }
 
-public class NullNetworkInstrumentationTest {
-
-    private NullNetworkInstrumentation instrumentation;
-
-    @Before
-    public void setUp() throws Exception {
-        instrumentation = new NullNetworkInstrumentation();
+    @NonNull
+    @Override
+    public LeakTracing getLeakTracing() {
+        return new NullLeakTracing();
     }
-
-    @Test
-    public void testDecorateNetwork_DoesNotChangeTheHttpClient() {
-        OkHttpClient okHttpClient = mock(OkHttpClient.class);
-
-        instrumentation.decorateNetwork(okHttpClient);
-
-        verifyZeroInteractions(okHttpClient);
-    }
-
 }

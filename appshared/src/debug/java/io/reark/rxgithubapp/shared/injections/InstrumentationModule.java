@@ -28,53 +28,52 @@ package io.reark.rxgithubapp.shared.injections;
 import android.app.Application;
 import android.content.Context;
 
-import com.facebook.stetho.okhttp.StethoInterceptor;
-import com.squareup.okhttp.Interceptor;
-import com.squareup.okhttp.OkHttpClient;
+import com.facebook.stetho.okhttp3.StethoInterceptor;
 
+import java.util.Collections;
+import java.util.List;
+
+import javax.inject.Named;
 import javax.inject.Singleton;
 
 import dagger.Module;
 import dagger.Provides;
-import io.reark.rxgithubapp.shared.network.NetworkInstrumentation;
 import io.reark.rxgithubapp.shared.utils.ApplicationInstrumentation;
 import io.reark.rxgithubapp.shared.utils.DebugApplicationInstrumentation;
+import io.reark.rxgithubapp.shared.utils.Instrumentation;
 import io.reark.rxgithubapp.shared.utils.LeakCanaryTracing;
 import io.reark.rxgithubapp.shared.utils.LeakTracing;
 import io.reark.rxgithubapp.shared.utils.StethoInstrumentation;
+import okhttp3.Interceptor;
 
 @Module
 public class InstrumentationModule {
 
     @Provides
     @Singleton
-    public ApplicationInstrumentation providesInstrumentation(LeakTracing leakTracing, StethoInstrumentation instrumentation) {
-        return new DebugApplicationInstrumentation(leakTracing, instrumentation);
+    public ApplicationInstrumentation provideInstrumentation(
+            LeakTracing leakTracing,
+            @Named("networkInstrumentation") Instrumentation networkInstrumentation) {
+        return new DebugApplicationInstrumentation(leakTracing, networkInstrumentation);
     }
 
     @Provides
     @Singleton
-    public LeakTracing providesLeakTracing(Application application) {
+    public LeakTracing provideLeakTracing(Application application) {
         return new LeakCanaryTracing(application);
     }
 
     @Provides
     @Singleton
-    public StethoInstrumentation providesStethoInstrumentation(@ForApplication Context context,
-                                                               Interceptor interceptor) {
-        return new StethoInstrumentation(context, interceptor);
+    @Named("networkInstrumentation")
+    public Instrumentation provideStethoInstrumentation(@ForApplication Context context) {
+        return new StethoInstrumentation(context);
     }
 
     @Provides
     @Singleton
-    public NetworkInstrumentation<OkHttpClient> providesNetworkInstrumentation(StethoInstrumentation instrumentation) {
-        return instrumentation;
+    @Named("networkInterceptors")
+    public List<Interceptor> provideNetworkInterceptors() {
+        return Collections.singletonList(new StethoInterceptor());
     }
-
-    @Provides
-    @Singleton
-    public Interceptor providesStethoIntercetor() {
-        return new StethoInterceptor();
-    }
-
 }

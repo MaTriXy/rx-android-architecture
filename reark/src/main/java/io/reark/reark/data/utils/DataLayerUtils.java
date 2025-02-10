@@ -27,10 +27,10 @@ package io.reark.reark.data.utils;
 
 import android.support.annotation.NonNull;
 
+import io.reactivex.Observable;
+import io.reactivex.functions.Function;
 import io.reark.reark.data.DataStreamNotification;
 import io.reark.reark.pojo.NetworkRequestStatus;
-import rx.Observable;
-import rx.functions.Func1;
 
 import static io.reark.reark.utils.Preconditions.checkNotNull;
 
@@ -46,8 +46,7 @@ public final class DataLayerUtils {
 
         final Observable<DataStreamNotification<T>> networkStatusStream =
                 networkRequestStatusObservable
-                        .map(DataLayerUtils.<T>fromNetworkRequestStatus())
-                        .filter(dataStreamNotification -> dataStreamNotification != null);
+                        .map(DataLayerUtils.<T>fromNetworkRequestStatus());
 
         final Observable<DataStreamNotification<T>> valueStream =
                 valueObservable.map(DataStreamNotification::onNext);
@@ -55,20 +54,23 @@ public final class DataLayerUtils {
         return Observable.merge(networkStatusStream, valueStream);
     }
 
-    private static<T> Func1<NetworkRequestStatus, DataStreamNotification<T>> fromNetworkRequestStatus() {
+    private static<T> Function<NetworkRequestStatus, DataStreamNotification<T>> fromNetworkRequestStatus() {
         return networkRequestStatus -> {
             checkNotNull(networkRequestStatus);
 
             switch (networkRequestStatus.getStatus()) {
-                case NETWORK_STATUS_ONGOING:
-                    return DataStreamNotification.fetchingStart();
-                case NETWORK_STATUS_COMPLETED:
-                    return DataStreamNotification.fetchingCompleted();
-                case NETWORK_STATUS_ERROR:
-                    return DataStreamNotification.fetchingError();
+                case ONGOING:
+                    return DataStreamNotification.ongoing();
+                case COMPLETED_WITH_VALUE:
+                    return DataStreamNotification.completedWithValue();
+                case COMPLETED_WITHOUT_VALUE:
+                    return DataStreamNotification.completedWithoutValue();
+                case COMPLETED_WITH_ERROR:
+                    return DataStreamNotification.completedWithError(networkRequestStatus.getErrorMessage());
+                case NONE:
+                default:
+                    throw new IllegalStateException("Unexpected network status " + networkRequestStatus);
             }
-
-            throw new IllegalStateException("Unexpected network status " + networkRequestStatus);
         };
     }
 }

@@ -29,16 +29,17 @@ import android.content.Intent;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 
-import io.reark.reark.data.stores.StorePutInterface;
+import io.reactivex.Single;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.internal.functions.Functions;
+import io.reactivex.schedulers.Schedulers;
+import io.reark.reark.data.stores.interfaces.StorePutInterface;
 import io.reark.reark.pojo.NetworkRequestStatus;
 import io.reark.reark.utils.Log;
 import io.reark.rxgithubapp.shared.network.GitHubService;
 import io.reark.rxgithubapp.shared.network.NetworkApi;
 import io.reark.rxgithubapp.shared.pojo.GitHubRepository;
-import rx.Observable;
-import rx.Subscription;
-import rx.functions.Action1;
-import rx.schedulers.Schedulers;
 
 import static io.reark.reark.utils.Preconditions.checkNotNull;
 
@@ -49,7 +50,7 @@ public class GitHubRepositoryFetcher extends AppFetcherBase<Uri> {
     private final StorePutInterface<GitHubRepository> gitHubRepositoryStore;
 
     public GitHubRepositoryFetcher(@NonNull final NetworkApi networkApi,
-                                   @NonNull final Action1<NetworkRequestStatus> updateNetworkRequestStatus,
+                                   @NonNull final Consumer<NetworkRequestStatus> updateNetworkRequestStatus,
                                    @NonNull final StorePutInterface<GitHubRepository> gitHubRepositoryStore) {
         super(networkApi, updateNetworkRequestStatus);
 
@@ -59,41 +60,40 @@ public class GitHubRepositoryFetcher extends AppFetcherBase<Uri> {
     }
 
     @Override
-    public void fetch(@NonNull final Intent intent) {
+    public synchronized void fetch(@NonNull final Intent intent, int listenerId) {
         checkNotNull(intent);
 
-        final int repositoryId = intent.getIntExtra("id", -1);
-
-        if (repositoryId >= 0) {
-            fetchGitHubRepository(repositoryId);
-        } else {
-            Log.e(TAG, "No repositoryId provided in the intent extras");
+        if (!intent.hasExtra("repositoryId")) {
+            Log.e(TAG, "Missing required fetch parameters!");
+            return;
         }
-    }
 
-    private void fetchGitHubRepository(final int repositoryId) {
-        Log.d(TAG, "fetchGitHubRepository(" + repositoryId + ")");
+        int repositoryId = intent.getIntExtra("repositoryId", 0);
+        final String uri = getUniqueId(repositoryId);
+
+        addListener(repositoryId, listenerId);
 
         if (isOngoingRequest(repositoryId)) {
             Log.d(TAG, "Found an ongoing request for repository " + repositoryId);
             return;
         }
 
-        final String uri = getUniqueId(repositoryId);
+        Log.d(TAG, "fetch(" + repositoryId + ")");
 
-        Subscription subscription = createNetworkObservable(repositoryId)
+        Disposable disposable = createNetworkObservable(repositoryId)
                 .subscribeOn(Schedulers.computation())
-                .doOnSubscribe(() -> startRequest(uri))
-                .doOnError(doOnError(uri))
-                .doOnCompleted(() -> completeRequest(uri))
-                .subscribe(gitHubRepositoryStore::put,
-                        e -> Log.e(TAG, "Error fetching GitHub repository " + repositoryId, e));
+                .flatMap(gitHubRepositoryStore::put)
+                .doOnSubscribe(__ -> startRequest(repositoryId, uri))
+                .doOnError(doOnError(repositoryId, uri))
+                .doOnSuccess(updated -> completeRequest(repositoryId, uri, updated))
+                .subscribe(Functions.emptyConsumer(),
+                        Log.onError(TAG, "Error fetching GitHub repository " + repositoryId));
 
-        addRequest(repositoryId, subscription);
+        addRequest(repositoryId, disposable);
     }
 
     @NonNull
-    private Observable<GitHubRepository> createNetworkObservable(int repositoryId) {
+    private Single<GitHubRepository> createNetworkObservable(int repositoryId) {
         return getNetworkApi().getRepository(repositoryId);
     }
 

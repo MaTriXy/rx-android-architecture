@@ -23,13 +23,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.reark.rxgithubapp.shared.network;
+package io.reark.reark.data.stores.interfaces;
 
 import android.support.annotation.NonNull;
 
-import io.reark.rxgithubapp.shared.utils.Instrumentation;
+import io.reactivex.Single;
 
-public interface NetworkInstrumentation<T> extends Instrumentation {
+/**
+ * Interface for stores into which it is possible to insert data.
+ *
+ * @param <U> Type of the data items.
+ */
+public interface StorePutInterface<U> {
+    /**
+     * The standard store interface for inserting a singular data item. The id of the item is
+     * expected to be deduced from the item itself by the store. This could be done through an
+     * interface such as getId(), though the put interface does not have an opinion of that.
+     *
+     * @param item The data item to insert into the store.
+     * @return Single that emits true if value was updated or inserted, and false otherwise.
+     */
     @NonNull
-    T decorateNetwork(@NonNull final T httpClient);
+    Single<Boolean> put(@NonNull final U item);
 }

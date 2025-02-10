@@ -30,13 +30,13 @@ import android.support.annotation.NonNull;
 import java.util.List;
 import java.util.Map;
 
+import io.reactivex.Single;
 import io.reark.rxgithubapp.shared.pojo.GitHubRepository;
 import io.reark.rxgithubapp.shared.pojo.GitHubRepositorySearchResults;
-import retrofit.RestAdapter;
-import retrofit.RestAdapter.Builder;
-import retrofit.RestAdapter.LogLevel;
-import retrofit.client.Client;
-import rx.Observable;
+import okhttp3.OkHttpClient;
+import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 import static io.reark.reark.utils.Preconditions.checkNotNull;
 
@@ -45,26 +45,27 @@ public class NetworkApi {
     @NonNull
     private final GitHubService gitHubService;
 
-    public NetworkApi(@NonNull final Client client) {
-        checkNotNull(client);
+    public NetworkApi(@NonNull final OkHttpClient client) {
+        checkNotNull(client, "Client cannot be null.");
 
-        RestAdapter restAdapter = new Builder()
-                .setClient(client)
-                .setEndpoint("https://api.github.com")
-                .setLogLevel(LogLevel.NONE)
+        Retrofit retrofit = new Retrofit.Builder()
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create())
+                .baseUrl("https://api.github.com")
+                .client(client)
                 .build();
 
-        gitHubService = restAdapter.create(GitHubService.class);
+        gitHubService = retrofit.create(GitHubService.class);
     }
 
     @NonNull
-    public Observable<List<GitHubRepository>> search(Map<String, String> search) {
+    public Single<List<GitHubRepository>> search(Map<String, String> search) {
         return gitHubService.search(search)
                             .map(GitHubRepositorySearchResults::getItems);
     }
 
     @NonNull
-    public Observable<GitHubRepository> getRepository(int id) {
+    public Single<GitHubRepository> getRepository(int id) {
         return gitHubService.getRepository(id);
     }
 }

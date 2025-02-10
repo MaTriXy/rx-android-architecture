@@ -23,21 +23,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.reark.rxgithubapp.shared.utils;
+package io.reark.reark.data.stores.interfaces;
 
-import android.content.Context;
-import android.support.annotation.NonNull;
-
-public class NullInstrumentation implements ApplicationInstrumentation {
-    @SuppressWarnings("unused")
-    public NullInstrumentation(Context context) { }
-
-    @Override
-    public void init() { }
-
-    @NonNull
-    @Override
-    public LeakTracing getLeakTracing() {
-        return new NullLeakTracing();
-    }
+/**
+ * A combined default interface for a store. A store acts as a data container, in which all data
+ * items are identified with an id that can be deduced from the item itself. Usually this would be
+ * done through a function such as U getId(T item), but it can be defined in the store
+ * implementation itself.
+ *
+ * @param <T> Type of the id used in this store.
+ * @param <U> Type of the data this store contains.
+ * @param <R> Non-null type or wrapper for the data this store contains.
+ */
+public interface StoreInterface<T, U, R> extends StorePutInterface<U>, StoreGetInterface<T, U, R>, StoreDeleteInterface<T> {
 }

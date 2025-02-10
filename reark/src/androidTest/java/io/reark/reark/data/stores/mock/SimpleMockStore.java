@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright (c) 2013-2016 reark project contributors
+ * Copyright (c) 2013-2017 reark project contributors
  *
  * https://github.com/reark/reark/graphs/contributors
  *
@@ -23,29 +23,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package io.reark.rxgithubapp.advanced.data.stores.cores;
+package io.reark.reark.data.stores.mock;
 
-import android.content.ContentResolver;
 import android.support.annotation.NonNull;
 
-import com.google.gson.Gson;
+import io.reark.reark.data.stores.ContentProviderStore;
 
-import io.reark.reark.data.stores.cores.ContentProviderStoreCore;
-import io.reark.reark.utils.Preconditions;
+/**
+ * A simple store containing String values tracked with Integer keys.
+ */
+public class SimpleMockStore extends ContentProviderStore<Integer, String, String> {
 
-public abstract class GsonStoreCoreBase<T, U> extends ContentProviderStoreCore<T, U> {
+    public static final String NONE = "";
 
-    @NonNull
-    private final Gson gson;
-
-    protected GsonStoreCoreBase(@NonNull final ContentResolver contentResolver, @NonNull final Gson gson) {
-        super(contentResolver);
-
-        this.gson = Preconditions.get(gson);
+    public SimpleMockStore(@NonNull final SimpleMockStoreCore core) {
+        super(core,
+                SimpleMockStore::getIdFor,
+                value -> value != null ? value : NONE,
+                () -> NONE);
     }
 
     @NonNull
-    protected Gson getGson() {
-        return gson;
+    public static Integer getIdFor(@NonNull final String item) {
+        return item.hashCode();
     }
+
 }

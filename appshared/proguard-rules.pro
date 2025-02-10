@@ -1,20 +1,62 @@
-# Add project specific ProGuard rules here.
-# By default, the flags in this file are appended to flags specified
-# in /Users/ttuo/Library/Android/sdk/tools/proguard/proguard-android.txt
-# You can edit the include path and order by changing the proguardFiles
-# directive in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+-verbose
+-dontobfuscate
+-dontusemixedcaseclassnames
+-dontskipnonpubliclibraryclasses
+-keepattributes SourceFile,LineNumberTable
+-keepattributes *Annotation*
 
-# Add any project specific keep options here:
+# Optimization step doesn't update things correctly
+-optimizations !code/allocation/variable
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+-dontwarn okio.**
+-dontwarn org.apache.http.**
+-dontwarn com.squareup.okhttp.internal.huc.**
+-dontwarn com.google.appengine.api.urlfetch.**
+-dontwarn android.net.http.AndroidHttpClient
+
+# OkHttp
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+-dontwarn okhttp3.**
+
+# Keep gson
+-keep public class com.google.gson.** { *; }
+
+# For RxJava
+-dontwarn sun.misc.Unsafe
+-dontwarn sun.misc.**
+-keep class rx.internal.util.unsafe.** { *; }
+
+-keepclassmembers class rx.internal.util.unsafe.*ArrayQueue*Field* {
+   long producerIndex;
+   long consumerIndex;
+}
+
+-keepclassmembers class rx.internal.util.unsafe.BaseLinkedQueueProducerNodeRef {
+    rx.internal.util.atomic.LinkedQueueNode producerNode;
+}
+
+-keepclassmembers class rx.internal.util.unsafe.BaseLinkedQueueConsumerNodeRef {
+    rx.internal.util.atomic.LinkedQueueNode consumerNode;
+}
+-keepclassmembers class rx.internal.util.unsafe.*ArrayQueue*Field* {
+   long producerIndex;
+   long consumerIndex;
+}
+
+# For retrolambda
+-dontwarn java.lang.invoke.*
+
+# Keep Retrofit 2
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
+-keepattributes Signature
+-keepattributes Exceptions
+-keepclasseswithmembers class * {
+    @retrofit2.http.* <methods>;
+}
 
 # Remove logging
 -assumenosideeffects class io.reark.reark.utils.Log { *; }

@@ -27,11 +27,11 @@ package io.reark.rxgithubapp.shared.data;
 
 import android.support.annotation.NonNull;
 
+import io.reactivex.Observable;
 import io.reark.reark.data.DataStreamNotification;
 import io.reark.rxgithubapp.shared.pojo.GitHubRepository;
 import io.reark.rxgithubapp.shared.pojo.GitHubRepositorySearch;
 import io.reark.rxgithubapp.shared.pojo.UserSettings;
-import rx.Observable;
 
 public class DataFunctions {
     public interface GetUserSettings {
@@ -48,8 +48,9 @@ public class DataFunctions {
         Observable<GitHubRepository> call(int repositoryId);
     }
 
-    public interface FetchAndGetGitHubRepository extends GetGitHubRepository {
-
+    public interface FetchAndGetGitHubRepository {
+        @NonNull
+        Observable<DataStreamNotification<GitHubRepository>> call(int repositoryId);
     }
 
     public interface GetGitHubRepositorySearch {
